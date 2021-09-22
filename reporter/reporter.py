@@ -9,6 +9,7 @@ from google.oauth2 import service_account
 import numpy as np
 import requests
 import datetime
+import matplotlib.pyplot as plt
 
 
 def get_files(path):
@@ -116,7 +117,7 @@ def send_photo_from_local_file_to_telegram(photo_path):
 	session.post(get_request, files=files)
 
 
-def send_report(bot, evaluation, script_path, tg_group, description):
+def send_report(evaluation, description):
 
     mycolors = ['tab:red', 'tab:blue', 'tab:green', 'tab:orange', 'tab:brown', 'tab:gray']
     fig, ax = plt.subplots(1,1,figsize=(16, 9), dpi= 80)
@@ -164,7 +165,7 @@ def main():
         if string_have_numbers(text_google):
             print('break google numbers')
             #os.unlink(file_path+file) # TODO: enable
-            continue
+            #continue TODO: enable
 
         measures = error(text_google, text_vosk)
         evals_wer.append(measures['wer'])
@@ -210,7 +211,8 @@ def main():
         start_date = pd.to_datetime((datetime.datetime.now() + datetime.timedelta(days=-10)).strftime('%Y-%m-%d'))
         evaluation.date = pd.to_datetime(evaluation.date)
         evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
-
+        send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], 1), 'average')
+        send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], 1), 'median')
 
 if __name__ == "__main__":
 	main()
