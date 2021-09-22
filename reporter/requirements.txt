@@ -1,3 +1,4 @@
 pandas
 jiwer
 websockets
+google-cloud-speech
