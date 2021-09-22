@@ -6,6 +6,9 @@ import websockets
 import json
 from google.cloud import speech_v1p1beta1
 from google.oauth2 import service_account
+import numpy as np
+import requests
+import datetime
 
 
 def get_files(path):
@@ -20,7 +23,7 @@ def string_have_numbers(example):
             return True
     return False
 
-def evaluate(df, name):    
+def evaluate(df, name):
     wer = []
     mer = []
     wil = []
@@ -102,27 +105,111 @@ def transcribe_google(file_path):
     return ''.join([str(item) for item in results]).lower()
 
 
+def send_photo_from_local_file_to_telegram(photo_path):
+
+	token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+	chat_id = os.environ.get('TELEGRAM_CHAT', '')
+	session = requests.Session()
+	get_request = 'https://api.telegram.org/bot' + token
+	get_request += '/sendPhoto?chat_id=' + chat_id
+	files = {'photo': open(photo_path, 'rb')}
+	session.post(get_request, files=files)
+
+
+def send_report(bot, evaluation, script_path, tg_group, description):
+
+    mycolors = ['tab:red', 'tab:blue', 'tab:green', 'tab:orange', 'tab:brown', 'tab:gray']
+    fig, ax = plt.subplots(1,1,figsize=(16, 9), dpi= 80)
+    columns = evaluation.columns[1:]
+    for i, column in enumerate(columns):
+        plt.plot(evaluation.date.values, evaluation[column].values, lw=1.5, color=mycolors[i], label=column)
+    plt.xticks(evaluation.date.values, rotation=60)
+    plt.title(description+' error rate\nlower - better')
+    plt.legend()
+    plt.savefig('evaluation.png')    
+    
+    send_photo_from_local_file_to_telegram('evaluation.png')
+
+
 def main():
+    # init
     path = 'audio/wer/'
     files = get_files(path)
     evals_wer = []
     evals_mer = []
-    evals_wil = [] 
+    evals_wil = []
+    current_date = (datetime.datetime.now() + datetime.timedelta(days=-1)).strftime('%Y-%m-%d')
 
-
-    print('vosk files:')
+    # collect transcribations
     for filename in files:
-        print(path + filename)
+        print('filename', filename)
+        
         phrases = asyncio.get_event_loop().run_until_complete(transcribe_vosk(path + filename))
         text_vosk = ' '.join(phrases).replace('  ',' ')
-        print(text_vosk)
+        print('text_vosk', text_vosk)
 
-    print('google files:')
-    for filename in files:
-        print(path + filename)        
+        if len(text_vosk)<10:
+            print('break vosk len', len(text_vosk))
+            #os.unlink(file_path+file) # TODO: enable
+            continue
+
         text_google = transcribe_google(path + filename).replace('  ',' ')
-        print(text_vosk)
+        print('text_google', text_google)
+
+        if len(text_google)<10:
+            print('break google len', len(text_google))
+            #os.unlink(file_path+file) # TODO: enable
+            continue
         
+        if string_have_numbers(text_google):
+            print('break google numbers')
+            #os.unlink(file_path+file) # TODO: enable
+            continue
+
+        measures = error(text_google, text_vosk)
+        evals_wer.append(measures['wer'])
+        evals_mer.append(measures['mer'])
+        evals_wil.append(measures['wil'])
+        #os.unlink(path + filename) # TODO: enable
+    
+    # error reate evaluation
+    if len(evals_wer) + len(evals_mer) + len(evals_wil) > 0:
+
+        print('avg: wer', np.average(evals_wer), 'mer', np.average(evals_mer), 'wil', np.average(evals_wil))
+        print('med: wer', np.median(evals_wer), 'mer', np.median(evals_mer), 'wil', np.median(evals_wil))
+
+        current = pd.DataFrame(columns = ['date', 'avg_wil', 'avg_wer', 'avg_mer', 'med_wil', 'med_wer', 'med_mer'])
+        current['date'] = pd.to_datetime(current_date).date()
+        current['avg_wil'] = [np.average(evals_wil)]
+        current['avg_wer'] = [np.average(evals_wer)]
+        current['avg_mer'] = [np.average(evals_mer)]
+        current['med_wil'] = [np.median(evals_wil)]
+        current['med_wer'] = [np.median(evals_wer)]
+        current['med_mer'] = [np.median(evals_mer)]
+
+        row = dict()
+        row['date'] = pd.to_datetime(current_date).date()
+        row['avg_wil'] = np.average(evals_wil)
+        row['avg_wer'] = np.average(evals_wer)
+        row['avg_mer'] = np.average(evals_mer)
+        row['med_wil'] = np.median(evals_wil)
+        row['med_wer'] = np.median(evals_wer)
+        row['med_mer'] = np.median(evals_mer)
+        current  = pd.DataFrame([row], columns=row.keys())
+
+        # save
+        evaluation_file = 'audio/wer/evaluation.csv'
+        if os.path.isfile(evaluation_file):
+            evaluation = pd.read_csv(evaluation_file, parse_dates = False)
+            evaluation = pd.concat([evaluation, current], axis = 0)            
+        else:
+            evaluation = current
+        evaluation.to_csv(evaluation_file, index = False)
+
+        # plot and send
+        start_date = pd.to_datetime((datetime.datetime.now() + datetime.timedelta(days=-10)).strftime('%Y-%m-%d'))
+        evaluation.date = pd.to_datetime(evaluation.date)
+        evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
 
 
 if __name__ == "__main__":

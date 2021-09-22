@@ -2,3 +2,5 @@ pandas
 jiwer
 websockets
 google-cloud-speech
+numpy
+requests
