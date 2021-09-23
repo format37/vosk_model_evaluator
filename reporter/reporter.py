@@ -10,6 +10,7 @@ import numpy as np
 import requests
 import datetime
 import matplotlib.pyplot as plt
+import time
 
 
 def get_files(path):
@@ -132,87 +133,106 @@ def send_report(evaluation, description):
     send_photo_from_local_file_to_telegram('evaluation.png')
 
 
+def sleep_until_time(hour, minute):
+
+    now = datetime.datetime.now()
+    if now.hour > hour or (now.hour == hour and now.minute >= minute):
+        tomorrow = now + datetime.timedelta(days=1)
+        tomorrow = tomorrow.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    else:
+        tomorrow = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    time.sleep((tomorrow - now).seconds)
+
+
 def main():
+    
     # init
     path = 'audio/wer/'
-    files = get_files(path)
-    evals_wer = []
-    evals_mer = []
-    evals_wil = []
-    current_date = (datetime.datetime.now() + datetime.timedelta(days=-1)).strftime('%Y-%m-%d')
 
-    # collect transcribations
-    for filename in files:
-        print('filename', filename)
+    while True:
+
+        sleep_until_time(6, 0)
+
+        files = get_files(path)
+        evals_wer = []
+        evals_mer = []
+        evals_wil = []
+        current_date = (datetime.datetime.now() + datetime.timedelta(days=-1)).strftime('%Y-%m-%d')
+
+        # collect transcribations
+        for filename in files:
+            print('filename', filename)
+            
+            phrases = asyncio.get_event_loop().run_until_complete(transcribe_vosk(path + filename))
+            text_vosk = ' '.join(phrases).replace('  ',' ')
+            print('text_vosk', text_vosk)
+
+            if len(text_vosk)<10:
+                print('break vosk len', len(text_vosk))
+                os.unlink(path + filename)
+                continue
+
+            text_google = transcribe_google(path + filename).replace('  ',' ')
+            print('text_google', text_google)
+
+            if len(text_google)<10:
+                print('break google len', len(text_google))
+                os.unlink(path + filename)
+                continue
+            
+            if string_have_numbers(text_google):
+                print('break google numbers')
+                os.unlink(path + filename)
+                continue
+
+            measures = error(text_google, text_vosk)
+            evals_wer.append(measures['wer'])
+            evals_mer.append(measures['mer'])
+            evals_wil.append(measures['wil'])
+            os.unlink(path + filename)
         
-        phrases = asyncio.get_event_loop().run_until_complete(transcribe_vosk(path + filename))
-        text_vosk = ' '.join(phrases).replace('  ',' ')
-        print('text_vosk', text_vosk)
+        # error reate evaluation
+        if len(evals_wer) + len(evals_mer) + len(evals_wil) > 0:
 
-        if len(text_vosk)<10:
-            print('break vosk len', len(text_vosk))
-            #os.unlink(file_path+file) # TODO: enable
-            continue
+            print('avg: wer', np.average(evals_wer), 'mer', np.average(evals_mer), 'wil', np.average(evals_wil))
+            print('med: wer', np.median(evals_wer), 'mer', np.median(evals_mer), 'wil', np.median(evals_wil))
 
-        text_google = transcribe_google(path + filename).replace('  ',' ')
-        print('text_google', text_google)
+            current = pd.DataFrame(columns = ['date', 'avg_wil', 'avg_wer', 'avg_mer', 'med_wil', 'med_wer', 'med_mer'])
+            current['date'] = pd.to_datetime(current_date).date()
+            current['avg_wil'] = [np.average(evals_wil)]
+            current['avg_wer'] = [np.average(evals_wer)]
+            current['avg_mer'] = [np.average(evals_mer)]
+            current['med_wil'] = [np.median(evals_wil)]
+            current['med_wer'] = [np.median(evals_wer)]
+            current['med_mer'] = [np.median(evals_mer)]
 
-        if len(text_google)<10:
-            print('break google len', len(text_google))
-            #os.unlink(file_path+file) # TODO: enable
-            continue
-        
-        if string_have_numbers(text_google):
-            print('break google numbers')
-            #os.unlink(file_path+file) # TODO: enable
-            #continue TODO: enable
+            row = dict()
+            row['date'] = pd.to_datetime(current_date).date()
+            row['avg_wil'] = np.average(evals_wil)
+            row['avg_wer'] = np.average(evals_wer)
+            row['avg_mer'] = np.average(evals_mer)
+            row['med_wil'] = np.median(evals_wil)
+            row['med_wer'] = np.median(evals_wer)
+            row['med_mer'] = np.median(evals_mer)
+            current  = pd.DataFrame([row], columns=row.keys())
 
-        measures = error(text_google, text_vosk)
-        evals_wer.append(measures['wer'])
-        evals_mer.append(measures['mer'])
-        evals_wil.append(measures['wil'])
-        #os.unlink(path + filename) # TODO: enable
-    
-    # error reate evaluation
-    if len(evals_wer) + len(evals_mer) + len(evals_wil) > 0:
+            # save
+            evaluation_file = 'audio/wer/evaluation.csv'
+            if os.path.isfile(evaluation_file):
+                evaluation = pd.read_csv(evaluation_file, parse_dates = False)
+                evaluation = pd.concat([evaluation, current], axis = 0)            
+            else:
+                evaluation = current
+            evaluation.to_csv(evaluation_file, index = False)
 
-        print('avg: wer', np.average(evals_wer), 'mer', np.average(evals_mer), 'wil', np.average(evals_wil))
-        print('med: wer', np.median(evals_wer), 'mer', np.median(evals_mer), 'wil', np.median(evals_wil))
+            # plot and send
+            start_date = pd.to_datetime((datetime.datetime.now() + datetime.timedelta(days=-10)).strftime('%Y-%m-%d'))
+            evaluation.date = pd.to_datetime(evaluation.date)
+            evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
+            send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], 1), 'average')
+            send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], 1), 'median')
 
-        current = pd.DataFrame(columns = ['date', 'avg_wil', 'avg_wer', 'avg_mer', 'med_wil', 'med_wer', 'med_mer'])
-        current['date'] = pd.to_datetime(current_date).date()
-        current['avg_wil'] = [np.average(evals_wil)]
-        current['avg_wer'] = [np.average(evals_wer)]
-        current['avg_mer'] = [np.average(evals_mer)]
-        current['med_wil'] = [np.median(evals_wil)]
-        current['med_wer'] = [np.median(evals_wer)]
-        current['med_mer'] = [np.median(evals_mer)]
-
-        row = dict()
-        row['date'] = pd.to_datetime(current_date).date()
-        row['avg_wil'] = np.average(evals_wil)
-        row['avg_wer'] = np.average(evals_wer)
-        row['avg_mer'] = np.average(evals_mer)
-        row['med_wil'] = np.median(evals_wil)
-        row['med_wer'] = np.median(evals_wer)
-        row['med_mer'] = np.median(evals_mer)
-        current  = pd.DataFrame([row], columns=row.keys())
-
-        # save
-        evaluation_file = 'audio/wer/evaluation.csv'
-        if os.path.isfile(evaluation_file):
-            evaluation = pd.read_csv(evaluation_file, parse_dates = False)
-            evaluation = pd.concat([evaluation, current], axis = 0)            
-        else:
-            evaluation = current
-        evaluation.to_csv(evaluation_file, index = False)
-
-        # plot and send
-        start_date = pd.to_datetime((datetime.datetime.now() + datetime.timedelta(days=-10)).strftime('%Y-%m-%d'))
-        evaluation.date = pd.to_datetime(evaluation.date)
-        evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
-        send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], 1), 'average')
-        send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], 1), 'median')
+            time.sleep(60)
 
 if __name__ == "__main__":
 	main()
