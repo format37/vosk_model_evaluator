@@ -151,7 +151,7 @@ def main():
 
     while True:
 
-        sleep_until_time(10, 20) # 6, 0
+        sleep_until_time(6, 0)
 
         files = get_files(path)
         evals_wer = []
