@@ -152,7 +152,7 @@ def main():
     while True:
 
         #sleep_until_time(6, 0)
-        sleep_until_time(9, 20)
+        sleep_until_time(9, 40)
 
         files = get_files(path)
         evals_wer = []
@@ -217,12 +217,18 @@ def main():
             row['med_wer'] = np.median(evals_wer)
             row['med_mer'] = np.median(evals_mer)
             current  = pd.DataFrame([row], columns=row.keys())
+            
+            # debug
+            current.to_csv('audio/wer/debug_current.csv', index = False)
 
             # save
             evaluation_file = 'audio/wer/evaluation.csv'
             if os.path.isfile(evaluation_file):
-                evaluation = pd.read_csv(evaluation_file, parse_dates = False)
-                evaluation = pd.concat([evaluation, current], axis = 0)            
+                evaluation = pd.read_csv(evaluation_file, parse_dates = False)                
+                print('evaluation', evaluation)
+                print('current', current)
+                evaluation = pd.concat([evaluation, current], axis = 0)
+                print('evaluation', evaluation)
             else:
                 print('ERROR: Path does not exist', evaluation_file)
                 evaluation = current
