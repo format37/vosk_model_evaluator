@@ -18,7 +18,7 @@ def get_files(path):
     for r, d, f in os.walk(path):
         for file in f:
             if '.wav' in file:
-                files.append(f)
+                files.append(file)
     files.sort()
     return files
 
