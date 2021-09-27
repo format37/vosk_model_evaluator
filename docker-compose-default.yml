@@ -8,6 +8,8 @@ services:
       - /etc/timezone:/etc/timezone:ro
     build: reporter
     environment:
+      - START_HOUR=6
+      - START_MINUTE=0
       - VOSK_SERVER_DEFAULT=ws://10.2.4.87:2700
       - GOOGLE_CREDENTIALS_FILE_PATH=/reporter/credentials/YOUR_GOOGLE_KEY.json
       - TELEGRAM_CHAT=-1001443983697
