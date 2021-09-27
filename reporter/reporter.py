@@ -159,8 +159,8 @@ def main():
     while True:
 
         sleep_until_time(
-            os.environ.get('START_HOUR', ''), 
-            os.environ.get('START_MINUTE', '')
+            int(os.environ.get('START_HOUR', '')), 
+            int(os.environ.get('START_MINUTE', ''))
             )
 
         files = get_files(path)
