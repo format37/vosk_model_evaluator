@@ -209,7 +209,8 @@ def main():
             current['med_mer'] = [np.median(evals_mer)]"""
 
             row = dict()
-            row['date'] = pd.to_datetime(current_date).date()
+            #row['date'] = pd.to_datetime(current_date).date()
+            row['date'] = current_date
             row['avg_wil'] = np.average(evals_wil)
             row['avg_wer'] = np.average(evals_wer)
             row['avg_mer'] = np.average(evals_mer)
@@ -225,10 +226,10 @@ def main():
             evaluation_file = 'audio/wer/evaluation.csv'
             if os.path.isfile(evaluation_file):
                 evaluation = pd.read_csv(evaluation_file, parse_dates = False)                
-                print('evaluation', evaluation)
-                print('current', current)
+                print('evaluation', len(evaluation))
+                print('current', len(current))
                 evaluation = pd.concat([evaluation, current], axis = 0)
-                print('evaluation', evaluation)
+                print('evaluation', len(evaluation))
             else:
                 print('ERROR: Path does not exist', evaluation_file)
                 evaluation = current
