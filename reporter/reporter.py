@@ -151,13 +151,15 @@ def main():
 
     while True:
 
-        sleep_until_time(6, 0)
+        #sleep_until_time(6, 0)
+        sleep_until_time(9, 20)
 
         files = get_files(path)
         evals_wer = []
         evals_mer = []
         evals_wil = []
-        current_date = (datetime.datetime.now() + datetime.timedelta(days=-1)).strftime('%Y-%m-%d')
+        #current_date = (datetime.datetime.now() + datetime.timedelta(days=-1)).strftime('%Y-%m-%d')
+        current_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
         # collect transcribations
         for filename in files:
@@ -168,7 +170,7 @@ def main():
             print('text_vosk', text_vosk)
 
             if len(text_vosk)<10:
-                print('break vosk len', len(text_vosk))
+                print('BREAK vosk len', len(text_vosk))
                 os.unlink(path + filename)
                 continue
 
@@ -176,12 +178,12 @@ def main():
             print('text_google', text_google)
 
             if len(text_google)<10:
-                print('break google len', len(text_google))
+                print('BREAK google len', len(text_google))
                 os.unlink(path + filename)
                 continue
             
             if string_have_numbers(text_google):
-                print('break google numbers')
+                print('BREAK google numbers')
                 os.unlink(path + filename)
                 continue
 
@@ -197,14 +199,14 @@ def main():
             print('avg: wer', np.average(evals_wer), 'mer', np.average(evals_mer), 'wil', np.average(evals_wil))
             print('med: wer', np.median(evals_wer), 'mer', np.median(evals_mer), 'wil', np.median(evals_wil))
 
-            current = pd.DataFrame(columns = ['date', 'avg_wil', 'avg_wer', 'avg_mer', 'med_wil', 'med_wer', 'med_mer'])
+            """current = pd.DataFrame(columns = ['date', 'avg_wil', 'avg_wer', 'avg_mer', 'med_wil', 'med_wer', 'med_mer'])
             current['date'] = pd.to_datetime(current_date).date()
             current['avg_wil'] = [np.average(evals_wil)]
             current['avg_wer'] = [np.average(evals_wer)]
             current['avg_mer'] = [np.average(evals_mer)]
             current['med_wil'] = [np.median(evals_wil)]
             current['med_wer'] = [np.median(evals_wer)]
-            current['med_mer'] = [np.median(evals_mer)]
+            current['med_mer'] = [np.median(evals_mer)]"""
 
             row = dict()
             row['date'] = pd.to_datetime(current_date).date()
@@ -222,6 +224,7 @@ def main():
                 evaluation = pd.read_csv(evaluation_file, parse_dates = False)
                 evaluation = pd.concat([evaluation, current], axis = 0)            
             else:
+                print('ERROR: Path does not exist', evaluation_file)
                 evaluation = current
             evaluation.to_csv(evaluation_file, index = False)
 
@@ -232,7 +235,7 @@ def main():
             send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], 1), 'average')
             send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], 1), 'median')
 
-            time.sleep(60)
+        time.sleep(60)
 
 if __name__ == "__main__":
 	main()
