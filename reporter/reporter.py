@@ -14,9 +14,14 @@ import time
 
 
 def get_files(path):
-    for root, dirs, files in os.walk(path):
-        files.sort()
-        return files
+    files = []
+    for r, d, f in os.walk(path):
+        for file in f:
+            if '.wav' in file:
+                files.append(f)
+    files.sort()
+    return files
+
 
 def string_have_numbers(example):
     numbers = [str(i) for i in range(0,10)]
@@ -24,6 +29,7 @@ def string_have_numbers(example):
         if i in numbers:
             return True
     return False
+
 
 def evaluate(df, name):
     wer = []
@@ -39,6 +45,7 @@ def evaluate(df, name):
     df[name + '_wil'] = wil
 
     return df
+
 
 def error(ground_truth, hypothesis):    
     wer = jiwer.wer(ground_truth, hypothesis)
@@ -223,7 +230,7 @@ def main():
             evaluation_file = 'audio/wer/evaluation.csv'
             if os.path.isfile(evaluation_file):
                 # debug
-                current.to_csv('audio/wer/debug_current_0.csv', index = False)
+                #current.to_csv('audio/wer/debug_current_0.csv', index = False)
                 evaluation = pd.read_csv(evaluation_file, parse_dates = False)                
                 print('evaluation', len(evaluation))
                 print('current', len(current))
@@ -231,7 +238,7 @@ def main():
                 print('evaluation', len(evaluation))
             else:
                 current.to_csv('audio/wer/debug_current_1.csv', index = False)
-                print('ERROR: Path does not exist', evaluation_file)
+                print('Path does not exist', evaluation_file)
                 evaluation = current
             evaluation.to_csv(evaluation_file, index = False)
 
@@ -243,6 +250,7 @@ def main():
             send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], axis = 1, inplace = False), 'median')
 
         time.sleep(60)
+
 
 if __name__ == "__main__":
 	main()
