@@ -152,7 +152,7 @@ def main():
     while True:
 
         #sleep_until_time(6, 0)
-        sleep_until_time(10, 27)
+        sleep_until_time(11, 5)
 
         files = get_files(path)
         evals_wer = []
@@ -218,19 +218,19 @@ def main():
             row['med_wer'] = np.median(evals_wer)
             row['med_mer'] = np.median(evals_mer)
             current  = pd.DataFrame([row], columns=row.keys())
-            
-            # debug
-            current.to_csv('audio/wer/debug_current.csv', index = False)
 
             # save
             evaluation_file = 'audio/wer/evaluation.csv'
             if os.path.isfile(evaluation_file):
+                # debug
+                current.to_csv('audio/wer/debug_current_0.csv', index = False)
                 evaluation = pd.read_csv(evaluation_file, parse_dates = False)                
                 print('evaluation', len(evaluation))
                 print('current', len(current))
                 evaluation = pd.concat([evaluation, current], axis = 0)
                 print('evaluation', len(evaluation))
             else:
+                current.to_csv('audio/wer/debug_current_1.csv', index = False)
                 print('ERROR: Path does not exist', evaluation_file)
                 evaluation = current
             evaluation.to_csv(evaluation_file, index = False)
@@ -239,8 +239,8 @@ def main():
             start_date = pd.to_datetime((datetime.datetime.now() + datetime.timedelta(days=-10)).strftime('%Y-%m-%d'))
             evaluation.date = pd.to_datetime(evaluation.date)
             evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
-            send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], 1), 'average')
-            send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], 1), 'median')
+            send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], axis = 1, inplace = False), 'average')
+            send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], axis = 1, inplace = False), 'median')
 
         time.sleep(60)
 
