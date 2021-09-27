@@ -101,7 +101,6 @@ def transcribe_google(file_path):
         "sample_rate_hertz": sample_rate_hertz,
         "encoding": encoding,
     }
-    #with io.open(file_path, 'rb') as audio_file:
     with open(file_path, "rb") as audio_file:
         content = audio_file.read()
         audio = speech_v1p1beta1.RecognitionAudio(content=content)
@@ -167,7 +166,6 @@ def main():
         evals_wer = []
         evals_mer = []
         evals_wil = []
-        #current_date = (datetime.datetime.now() + datetime.timedelta(days=-1)).strftime('%Y-%m-%d')
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
         # collect transcribations
@@ -208,17 +206,7 @@ def main():
             print('avg: wer', np.average(evals_wer), 'mer', np.average(evals_mer), 'wil', np.average(evals_wil))
             print('med: wer', np.median(evals_wer), 'mer', np.median(evals_mer), 'wil', np.median(evals_wil))
 
-            """current = pd.DataFrame(columns = ['date', 'avg_wil', 'avg_wer', 'avg_mer', 'med_wil', 'med_wer', 'med_mer'])
-            current['date'] = pd.to_datetime(current_date).date()
-            current['avg_wil'] = [np.average(evals_wil)]
-            current['avg_wer'] = [np.average(evals_wer)]
-            current['avg_mer'] = [np.average(evals_mer)]
-            current['med_wil'] = [np.median(evals_wil)]
-            current['med_wer'] = [np.median(evals_wer)]
-            current['med_mer'] = [np.median(evals_mer)]"""
-
             row = dict()
-            #row['date'] = pd.to_datetime(current_date).date()
             row['date'] = current_date
             row['avg_wil'] = np.average(evals_wil)
             row['avg_wer'] = np.average(evals_wer)
@@ -231,8 +219,6 @@ def main():
             # save
             evaluation_file = 'audio/wer/evaluation.csv'
             if os.path.isfile(evaluation_file):
-                # debug
-                #current.to_csv('audio/wer/debug_current_0.csv', index = False)
                 evaluation = pd.read_csv(evaluation_file, parse_dates = False)                
                 print('evaluation', len(evaluation))
                 print('current', len(current))
