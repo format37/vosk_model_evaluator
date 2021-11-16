@@ -58,7 +58,7 @@ def error(ground_truth, hypothesis):
 
 
 async def transcribe_vosk(file_path):
-    async with websockets.connect(os.environ.get('VOSK_SERVER_DEFAULT', '')) as websocket:
+    async with websockets.connect(os.environ.get('VOSK_SERVER_DEFAULT', '')) as websocket:    
         
         phrases = []
         with open(file_path, "rb") as audio_file:
