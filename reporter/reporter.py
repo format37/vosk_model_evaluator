@@ -233,7 +233,8 @@ def main():
             # plot and send
             start_date = pd.to_datetime((datetime.datetime.now() + datetime.timedelta(days=-10)).strftime('%Y-%m-%d'))
             evaluation.date = pd.to_datetime(evaluation.date)
-            evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
+            #evaluation = pd.DataFrame(evaluation[evaluation.date>start_date])
+            evaluation = pd.DataFrame(evaluation[:-10])
             send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], axis = 1, inplace = False), 'average')
             send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], axis = 1, inplace = False), 'median')
 
