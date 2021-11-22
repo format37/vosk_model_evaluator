@@ -33,6 +33,6 @@ def send_report(evaluation, description):
 
 evaluation_file = '~/projects/wer/evaluation.csv'
 evaluation = pd.read_csv(evaluation_file, parse_dates = False)
-evaluation = pd.DataFrame(evaluation[:-10])
+evaluation = pd.DataFrame(evaluation[-14:])
 send_report(evaluation.drop(['med_wil', 'med_wer', 'med_mer'], axis = 1, inplace = False), 'average')
 send_report(evaluation.drop(['avg_wil', 'avg_wer', 'avg_mer'], axis = 1, inplace = False), 'median')
