@@ -1,2 +1,2 @@
 # vosk_model_evaluator
-wer, mer, wil of vosk vs google transcribators comparator
+wer, mer, wil of whisper vs vosk vs google transcribators comparator
