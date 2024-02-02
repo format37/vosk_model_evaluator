@@ -143,6 +143,10 @@ def clean_text(text):
 
 
 async def transcribe_whisper(file_path, server_url):
+
+    # https://github.com/linto-ai/whisper-timestamped
+    # https://github.com/openai/whisper
+
     phrases = []
     async with httpx.AsyncClient(timeout=None) as client:
         files = {
