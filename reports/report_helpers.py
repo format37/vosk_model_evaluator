@@ -1,9 +1,12 @@
+import httpx
+from num2words import num2words
+import re
 import zipfile
 import urllib.request
 import json
 import websockets
 import requests
-from google.cloud import speech_v1p1beta1
+# from google.cloud import speech_v1p1beta1
 import io
 import os
 import time
@@ -130,6 +133,41 @@ async def transcribe_vosk(file_path, server):
     return phrases
 """
 
+
+def clean_text(text):
+    text = text.replace("-", " ")
+    text = re.sub(r"[^\w\s]", "", text)
+    text = re.sub(r"\b\d+\b", lambda x: num2words(int(x.group()), lang="ru"), text)
+    text = re.sub(r"\s+", " ", text).strip().lower()
+    return text
+
+
+async def transcribe_whisper(file_path, server_url):
+
+    # https://github.com/linto-ai/whisper-timestamped
+    # https://github.com/openai/whisper
+
+    phrases = []
+    async with httpx.AsyncClient(timeout=None) as client:
+        files = {
+            "file": (os.path.basename(file_path), open(file_path, "rb"), "audio/wav")
+        }
+        response = await client.post(server_url, files=files)
+        if response.status_code == 200:
+            data = response.json()
+            if "segments" in data:
+                for segment in data["segments"]:
+                    cleaned_text = clean_text(segment["text"])
+                    phrases.append(cleaned_text)
+            else:
+                cleaned_text = clean_text(data["text"])
+                phrases.append(cleaned_text)
+        else:
+            print(f"Error processing file {file_path}: {response.text}")
+
+    return phrases
+
+
 def error(ground_truth, hypothesis):
     
     wer = jiwer.wer(ground_truth, hypothesis)
@@ -172,17 +210,17 @@ def evaluate(df, name):
 
 
 def plot(df, names):
-    
+
     errors = ['wer', 'mer', 'wil']
     for r in errors:
-        df.plot(y = [n + '_' + r for n in names], kind='bar')
+        df.plot(y=[n + "_" + r for n in names], kind="bar", width=0.9, figsize=(20, 6))
         plt.legend(bbox_to_anchor=(1, 1), loc='upper left', ncol=1)
         plt.grid(linestyle='--', alpha=0.5)
         plt.show()
 
 
 def comparator(df, engines, evals):
-    
+
     comparing = []
     for g in engines:
         for v in evals:
@@ -192,9 +230,12 @@ def comparator(df, engines, evals):
                 'val': np.median(df[g + '_' + v])
             })
     comp_df = pd.DataFrame(comparing)
+
+    plt.figure(figsize=(20, 7))
+
     for v in evals:
         data_pointer = comp_df[comp_df.eval_func == v]
-        plt.plot(data_pointer.engine, data_pointer.val, label = v)
+        plt.plot(data_pointer.engine, data_pointer.val, label=v, linewidth=3)
     plt.legend(bbox_to_anchor=(1, 1), loc='upper left', ncol=1)
     plt.grid(linestyle='--', alpha=0.5)
     plt.show()
